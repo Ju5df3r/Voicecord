@@ -34,20 +34,25 @@ discriminator = userinfo["discriminator"]
 userid = userinfo["id"]
 
 
-def send_heartbeat(ws, interval):
-    while True:
+def send_heartbeat(ws, interval, stop_event):
+    while not stop_event.is_set():
         time.sleep(interval / 1000)
         try:
             ws.send(json.dumps({"op": 1, "d": None}))
-        except:
+            print("♥ Heartbeat sent")
+        except Exception as e:
+            print(f"Heartbeat failed: {e}")
             break
 
 
 def joiner(token, status):
     ws = create_connection('wss://gateway.discord.gg/?v=9&encoding=json')
+    print("✓ Connected to Discord Gateway")
+
     start = json.loads(ws.recv())
     heartbeat_interval = start['d']['heartbeat_interval']
-    
+    print(f"✓ Heartbeat interval: {heartbeat_interval}ms")
+
     auth = {
         "op": 2,
         "d": {
@@ -65,7 +70,7 @@ def joiner(token, status):
         "s": None,
         "t": None
     }
-    
+
     vc = {
         "op": 4,
         "d": {
@@ -75,21 +80,55 @@ def joiner(token, status):
             "self_deaf": SELF_DEAF
         }
     }
-    
+
     ws.send(json.dumps(auth))
-    time.sleep(0.5)
+    print("✓ Authentication sent")
+
+    # Wait for READY event
+    while True:
+        msg = json.loads(ws.recv())
+        if msg.get('t') == 'READY':
+            print("✓ Ready event received")
+            break
+
+    # Join voice channel
     ws.send(json.dumps(vc))
-    
+    print("✓ Joined voice channel")
+
     # Start heartbeat thread
-    heartbeat_thread = threading.Thread(target=send_heartbeat, args=(ws, heartbeat_interval))
+    stop_event = threading.Event()
+    heartbeat_thread = threading.Thread(target=send_heartbeat,
+                                        args=(ws, heartbeat_interval,
+                                              stop_event))
     heartbeat_thread.daemon = True
     heartbeat_thread.start()
-    
-    # Keep connection alive
+
+    # Keep reading messages to maintain connection
+    print("✓ Maintaining connection... (press Ctrl+C to stop)")
     while True:
         try:
-            time.sleep(1)
+            msg = ws.recv()
+            if msg:
+                data = json.loads(msg)
+                # Handle important opcodes
+                if data['op'] == 9:  # Invalid session
+                    print("! Invalid session, reconnecting...")
+                    stop_event.set()
+                    ws.close()
+                    break
+                elif data['op'] == 7:  # Reconnect
+                    print("! Discord requested reconnect...")
+                    stop_event.set()
+                    ws.close()
+                    break
         except KeyboardInterrupt:
+            print("\n! Stopping...")
+            stop_event.set()
+            ws.close()
+            break
+        except Exception as e:
+            print(f"! Error reading message: {e}")
+            stop_event.set()
             ws.close()
             break
 
