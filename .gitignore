@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Replit
+.pythonlibs/
+.upm/
+.cache/
+.config/
+.local/
+
+# Secrets - DO NOT COMMIT
+.env
+.env.local
+TOKEN
+secrets.txt
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

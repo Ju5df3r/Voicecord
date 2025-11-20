@@ -1,0 +1,43 @@
+entrypoint = "main.py"
+run = "pip install -r requirements.txt && python3 main.py"
+modules = ["python-3.10"]
+
+hidden = [".pythonlibs"]
+
+[nix]
+channel = "stable-25_05"
+packages = ["gdb", "opensshWithKerberos"]
+
+[deployment]
+run = ["python", "main.py"]
+deploymentTarget = "vm"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Discord Auto-Joiner"
+
+[[workflows.workflow]]
+name = "Discord Auto-Joiner"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[ports]]
+localPort = 8080
+externalPort = 80
+
+[agent]
+expertMode = true
